@@ -1,0 +1,14 @@
+{
+    "idf.port": "/dev/cu.usbserial-143220",
+    "files.associations": {
+        "event_groups.h": "c",
+        "task.h": "c",
+        "freertos.h": "c",
+        "board.h": "c",
+        "tusb.h": "c",
+        "audio_pipeline.h": "c",
+        "esp_wifi.h": "c",
+        "esp_idf_version.h": "c",
+        "periph_adc_button.h": "c"
+    }
+}
