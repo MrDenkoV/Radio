@@ -42,9 +42,22 @@
 #include "tcpip_adapter.h"
 #endif
 
-static const char *TAG = "HTTP_LIVINGSTREAM_EXAMPLE";
+static const char *TAG = "RADIO";
 
-#define AAC_STREAM_URI "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac"
+// #define AAC_STREAM_URI "http://101.79.244.199:1935/cocotv/_definst_/CH00007/playlist.m3u8" ???
+// #define AAC_STREAM_URI "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac"
+// #define AAC_STREAM_URI "https://streams.radiomast.io/a622d414-52a6-4426-b3b8-ed2a4dbb704b"
+
+#define RADIOS_NUMBER 5
+int current_ix = 0;
+const char *URI[] = {
+    "https://streams.radiomast.io/a622d414-52a6-4426-b3b8-ed2a4dbb704b",
+    "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac",
+    "http://101.79.244.199:1935/cocotv/_definst_/CH00007/playlist.m3u8",
+    "http://sk.cri.cn/hyhq.m3u8",
+    "http://stream2.bbnradio.org:8000/chinese.aac"
+};
+
 
 int _http_stream_event_handle(http_stream_event_msg_t *msg)
 {
@@ -123,7 +136,8 @@ void app_main(void)
     audio_pipeline_link(pipeline, &link_tag[0], 3);
 
     ESP_LOGI(TAG, "[2.6] Set up  uri (http as http_stream, aac as aac decoder, and default output is i2s)");
-    audio_element_set_uri(http_stream_reader, AAC_STREAM_URI);
+    audio_element_set_uri(http_stream_reader, URI[current_ix]);
+    // audio_element_set_uri(http_stream_reader, AAC_STREAM_URI);
 
     ESP_LOGI(TAG, "[ 3 ] Start and wait for Wi-Fi network and initialize peripherals");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
@@ -216,8 +230,15 @@ void app_main(void)
                 }
             } else if ((int) msg.data == get_input_set_id()) {
                 ESP_LOGI(TAG, "[ * ] [Set] touch tap event");
-                ESP_LOGI(TAG, "[ * ] Next station");
-                // TODO
+                ESP_LOGI(TAG, "[ * ] changin to radio %d", ++current_ix);
+                current_ix%=RADIOS_NUMBER;
+                ESP_LOGI(TAG, "[ * ] station's URI: %s", URI[current_ix]);
+                audio_pipeline_stop(pipeline);
+                audio_pipeline_wait_for_stop(pipeline);
+                audio_pipeline_reset_ringbuffer(pipeline);
+                audio_pipeline_reset_items_state(pipeline);
+                audio_element_set_uri(http_stream_reader, URI[current_ix]);
+                audio_pipeline_resume(pipeline);
             } else if ((int) msg.data == get_input_volup_id()) {
                 ESP_LOGI(TAG, "[ * ] [Vol+] touch tap event");
                 player_volume += 10;
