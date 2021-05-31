@@ -13,6 +13,7 @@
 #include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "esp_decoder.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
 #include "audio_element.h"
@@ -22,6 +23,8 @@
 #include "http_stream.h"
 #include "i2s_stream.h"
 #include "aac_decoder.h"
+#include "mp3_decoder.h"
+// #include "ogg_decoder.h"
 
 #include "esp_peripherals.h"
 #include "periph_wifi.h"
@@ -44,20 +47,53 @@
 
 static const char *TAG = "RADIO";
 
-// #define AAC_STREAM_URI "http://101.79.244.199:1935/cocotv/_definst_/CH00007/playlist.m3u8" ???
-// #define AAC_STREAM_URI "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac"
-// #define AAC_STREAM_URI "https://streams.radiomast.io/a622d414-52a6-4426-b3b8-ed2a4dbb704b"
 
-#define RADIOS_NUMBER 5
-int current_ix = 0;
-const char *URI[] = {
-    "https://streams.radiomast.io/a622d414-52a6-4426-b3b8-ed2a4dbb704b",
-    "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac",
-    "http://101.79.244.199:1935/cocotv/_definst_/CH00007/playlist.m3u8",
-    "http://sk.cri.cn/hyhq.m3u8",
-    "http://stream2.bbnradio.org:8000/chinese.aac"
+typedef struct{
+    char* name;
+    char* decoder_name;
+    char* uri;
+} radio_station_t;
+
+radio_station_t stations[] = {
+    {
+        .name = "station1",
+        .decoder_name = "auto", // aac
+        .uri = "https://streams.radiomast.io/a622d414-52a6-4426-b3b8-ed2a4dbb704b"
+    },
+    {
+        .name = "station2",
+        .decoder_name = "auto", // aac
+        .uri = "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac"
+    },
+    // { OGG doesn't work :(
+    //     .name = "station4",
+    //     .decoder_name = "auto", // ogg
+    //     .uri = "https://listen.moe/stream"
+    // },
+    {
+        .name = "station3",
+        .decoder_name = "auto", // mp3
+        .uri = "http://musicbird.leanstream.co/JCB104-MP3"
+    },
+    {
+        .name = "station4",
+        .decoder_name = "auto", // aac
+        .uri = "http://stream2.bbnradio.org:8000/chinese.aac"
+    },
+    {
+        .name = "station5",
+        .decoder_name = "aac", // mp4a
+        .uri = "http://101.79.244.199:1935/cocotv/_definst_/CH00007/playlist.m3u8"
+    },
+    {
+        .name = "station6",
+        .decoder_name = "aac", // mp4a
+        .uri = "http://sk.cri.cn/hyhq.m3u8"
+    }
 };
 
+#define RADIOS_NUMBER (sizeof(stations) / sizeof(radio_station_t))
+int current_ix = 0;
 
 int _http_stream_event_handle(http_stream_event_msg_t *msg)
 {
@@ -88,23 +124,20 @@ void app_main(void)
 #endif
 
     audio_pipeline_handle_t pipeline;
-    audio_element_handle_t http_stream_reader, i2s_stream_writer, aac_decoder;
+    audio_element_handle_t http_stream_reader, i2s_stream_writer, auto_decoder, aac_decoder;
 
-    // esp_log_level_set("*", ESP_LOG_INFO);
-    // esp_log_level_set(TAG, ESP_LOG_DEBUG);
     esp_log_level_set("*", ESP_LOG_WARN);
+    // esp_log_level_set("AUDIO_PIPELINE", ESP_LOG_DEBUG);
     esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    // esp_log_level_set("AUDIO_ELEMENT", ESP_LOG_DEBUG);
-    // esp_log_level_set("AUDIO_PIPELINE", ESP_LOG_DEBUG);
-
-    ESP_LOGI(TAG, "[ 1 ] Start audio codec chip");
+    ESP_LOGI(TAG, "[ 1.0 ] Start audio codec chip %d", RADIOS_NUMBER);
     audio_board_handle_t board_handle = audio_board_init();
     audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
 
-    // volume
-    int player_volume;
-    audio_hal_get_volume(board_handle->audio_hal, &player_volume);
+    ESP_LOGI(TAG, "[ 1.1 ] Initialize volume");
+    int player_volume=9;
+    audio_hal_set_volume(board_handle->audio_hal, player_volume);
+    // audio_hal_get_volume(board_handle->audio_hal, &player_volume);
 
     ESP_LOGI(TAG, "[2.0] Create audio pipeline for playback");
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -122,22 +155,33 @@ void app_main(void)
     i2s_cfg.type = AUDIO_STREAM_WRITER;
     i2s_stream_writer = i2s_stream_init(&i2s_cfg);
 
-    ESP_LOGI(TAG, "[2.3] Create aac decoder to decode aac file");
+    ESP_LOGI(TAG, "[2.3] Create auto decoder");
+    audio_decoder_t auto_decode[] = {
+        DEFAULT_ESP_MP3_DECODER_CONFIG(),
+        DEFAULT_ESP_AAC_DECODER_CONFIG()
+    };
+    esp_decoder_cfg_t auto_dec_cfg = DEFAULT_ESP_DECODER_CONFIG();
+    auto_decoder = esp_decoder_init(&auto_dec_cfg, auto_decode, sizeof(auto_decode) / sizeof(audio_decoder_t));
+
+    // auto decoder is not working with mp4a streams (we use aac then)
+    ESP_LOGI(TAG, "[2.4] Create aac decoder");
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
     aac_decoder = aac_decoder_init(&aac_cfg);
 
-    ESP_LOGI(TAG, "[2.4] Register all elements to audio pipeline");
+    ESP_LOGI(TAG, "[2.5] Register all elements to audio pipeline");
     audio_pipeline_register(pipeline, http_stream_reader, "http");
+    audio_pipeline_register(pipeline, auto_decoder,        "auto");
     audio_pipeline_register(pipeline, aac_decoder,        "aac");
     audio_pipeline_register(pipeline, i2s_stream_writer,  "i2s");
 
-    ESP_LOGI(TAG, "[2.5] Link it together http_stream-->aac_decoder-->i2s_stream-->[codec_chip]");
-    const char *link_tag[3] = {"http", "aac", "i2s"};
-    audio_pipeline_link(pipeline, &link_tag[0], 3);
 
-    ESP_LOGI(TAG, "[2.6] Set up  uri (http as http_stream, aac as aac decoder, and default output is i2s)");
-    audio_element_set_uri(http_stream_reader, URI[current_ix]);
-    // audio_element_set_uri(http_stream_reader, AAC_STREAM_URI);
+    ESP_LOGI(TAG, "[2.6] Link it together http_stream-->auto_dec/aac_dec-->i2s_stream-->[codec_chip]");
+    audio_pipeline_link(pipeline, (const char *[]) {"http", stations[current_ix].decoder_name, "i2s"}, 3);
+
+    
+    ESP_LOGI(TAG, "[2.7] Set up  uri (http as http_stream, aac as aac decoder, and default output is i2s)");
+    audio_element_set_uri(http_stream_reader, stations[current_ix].uri);
+
 
     ESP_LOGI(TAG, "[ 3 ] Start and wait for Wi-Fi network and initialize peripherals");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
@@ -161,12 +205,11 @@ void app_main(void)
     ESP_LOGI(TAG, "[4.2] Listening event from peripherals");
     audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
 
-    // ESP_LOGI(TAG, "[ 5 ] Start audio_pipeline");
-    // audio_pipeline_run(pipeline);
     ESP_LOGW(TAG, "[ 5 ] Tap touch buttons to control music player:");
     ESP_LOGW(TAG, "      [Play] to start and stop. [Set] to change station.");
     ESP_LOGW(TAG, "      [Vol-] or [Vol+] to adjust volume.");
 
+    audio_element_handle_t next_decoder, current_decoder = audio_pipeline_get_el_by_tag(pipeline, stations[current_ix].decoder_name);
     while (1) {
         audio_event_iface_msg_t msg;
         esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
@@ -176,13 +219,14 @@ void app_main(void)
         }
 
         if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            && msg.source == (void *) aac_decoder
+            && msg.source == (void *) current_decoder
             && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO) {
             audio_element_info_t music_info = {0};
-            audio_element_getinfo(aac_decoder, &music_info);
+            audio_element_getinfo(current_decoder, &music_info);
 
-            ESP_LOGI(TAG, "[ * ] Receive music info from aac decoder, sample_rates=%d, bits=%d, ch=%d",
-                     music_info.sample_rates, music_info.bits, music_info.channels);
+            ESP_LOGI(TAG, "[ * ] Receive music info from %s using %s, sample_rates=%d, bits=%d, ch=%d",
+                     stations[current_ix].name, stations[current_ix].decoder_name, music_info.sample_rates,
+                     music_info.bits, music_info.channels);
 
             audio_element_setinfo(i2s_stream_writer, &music_info);
             i2s_stream_set_clk(i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
@@ -195,7 +239,7 @@ void app_main(void)
             ESP_LOGW(TAG, "[ * ] Restart stream");
             audio_pipeline_stop(pipeline);
             audio_pipeline_wait_for_stop(pipeline);
-            audio_element_reset_state(aac_decoder);
+            audio_element_reset_state(current_decoder);
             audio_element_reset_state(i2s_stream_writer);
             audio_pipeline_reset_ringbuffer(pipeline);
             audio_pipeline_reset_items_state(pipeline);
@@ -230,15 +274,28 @@ void app_main(void)
                 }
             } else if ((int) msg.data == get_input_set_id()) {
                 ESP_LOGI(TAG, "[ * ] [Set] touch tap event");
-                ESP_LOGI(TAG, "[ * ] changin to radio %d", ++current_ix);
-                current_ix%=RADIOS_NUMBER;
-                ESP_LOGI(TAG, "[ * ] station's URI: %s", URI[current_ix]);
+                current_ix = (current_ix+1) % RADIOS_NUMBER;
+                ESP_LOGI(TAG, "[ * ] changin' to radio %d %s", current_ix, stations[current_ix].name);
+                ESP_LOGI(TAG, "[ * ] station's decoder %s and URI: %s", stations[current_ix].decoder_name, stations[current_ix].uri);
                 audio_pipeline_stop(pipeline);
                 audio_pipeline_wait_for_stop(pipeline);
+                // audio_pipeline_terminate(pipeline);
+                audio_element_reset_state(current_decoder);
+                audio_element_reset_state(i2s_stream_writer);
                 audio_pipeline_reset_ringbuffer(pipeline);
+                // audio_pipeline_reset_elements(pipeline);
                 audio_pipeline_reset_items_state(pipeline);
-                audio_element_set_uri(http_stream_reader, URI[current_ix]);
-                audio_pipeline_resume(pipeline);
+                audio_element_set_uri(http_stream_reader, stations[current_ix].uri);
+                next_decoder = audio_pipeline_get_el_by_tag(pipeline, stations[current_ix].decoder_name);
+                if(current_decoder != next_decoder){
+                    current_decoder = next_decoder;
+                    ESP_LOGI(TAG, "[ * ] changin' decoder to %s", stations[current_ix].decoder_name);
+                    audio_pipeline_breakup_elements(pipeline, current_decoder);
+                    audio_pipeline_relink(pipeline, (const char* []) {"http", stations[current_ix].decoder_name, "i2s"}, 3);
+                    audio_pipeline_set_listener(pipeline, evt);
+                }
+                audio_pipeline_run(pipeline);
+                // audio_pipeline_resume(pipeline);
             } else if ((int) msg.data == get_input_volup_id()) {
                 ESP_LOGI(TAG, "[ * ] [Vol+] touch tap event");
                 player_volume += 10;
@@ -269,6 +326,7 @@ void app_main(void)
 
     audio_pipeline_unregister(pipeline, http_stream_reader);
     audio_pipeline_unregister(pipeline, i2s_stream_writer);
+    audio_pipeline_unregister(pipeline, auto_decoder);
     audio_pipeline_unregister(pipeline, aac_decoder);
 
     /* Terminate the pipeline before removing the listener */
@@ -285,6 +343,7 @@ void app_main(void)
     audio_pipeline_deinit(pipeline);
     audio_element_deinit(http_stream_reader);
     audio_element_deinit(i2s_stream_writer);
+    audio_element_deinit(auto_decoder);
     audio_element_deinit(aac_decoder);
     esp_periph_set_destroy(set);
 }
