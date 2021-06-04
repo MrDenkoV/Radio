@@ -160,8 +160,9 @@ Playlisty .m3u8 (w zasadzie M3U, m3u8 to M3U kodowane w UTF-8) to niewielkie pli
 Poza opcjonalnymi metadanymi po prostu zawierają adresy elementów playlisty. Element zawiera adres bezwzględny, lub względny (względem folderu, w którym znajduje się playlista) do docelowego pliku. W sczególności może istnieć playlista jednoelementowa lub elementem playlisty może być inna playlista. W przypadku playlisty konkretnego radia internetowego bardzo częstym przypadkiem jest stworzenie playlisty, której elementami są mirror streamy; dzięki takiemu rozwiązaniu gdy jeden stream ulegnie awarii odbiornik radia automatycznie przełącza się na kolejny adres z playlisty.
 
 ### 4.2 Inicjalizacja audio kodeku
-
+// TODO: Kacper
 ### 4.3 Konfiguracja `audio_pipelnie`
+// TODO: Kacper
 
 
 ### 4.4 Konfiguracja wi-fi i przycisków - peryferia
@@ -180,19 +181,17 @@ periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
 Standardowa konfiguracja, SSID oraz hasło podajemy w pliku konfiguracyjnym.
 Dodatkowo incjujemy obsługę przycisków. Oba uchwyty dodajemy do piepeline'a.
 
-### 4.5 Ustawieniee 
-
-### 4.6
-
+### 4.5 Ustawienie listenera
+// TODO: Kacper
 ### 4.6 Start radia
 
+#### 4.6.0 Odbieranie `music_info`
+// TODO: 私
+
+#### 4.6.1 Fail-over
+// TODO: Kacper
+
+#### 4.6.2 Obsługa poszczególnych przycisków
+// TODO: 私
 ### 4.7 Zatrzymanie wszystkiego i deinicjalizacja 
-
-
-
-```c
-// amazing syntax coloring!
-void myFunction(int a, int b){
-  printf("a=%d, b=%d", a, b);
-}
-```
+// TODO: 私
