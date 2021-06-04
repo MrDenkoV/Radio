@@ -23,7 +23,7 @@
 #include "http_stream.h"
 #include "i2s_stream.h"
 #include "aac_decoder.h"
-#include "mp3_decoder.h"
+// #include "mp3_decoder.h"
 // #include "ogg_decoder.h"
 
 #include "esp_peripherals.h"
@@ -279,11 +279,9 @@ void app_main(void)
                 ESP_LOGI(TAG, "[ * ] station's decoder %s and URI: %s", stations[current_ix].decoder_name, stations[current_ix].uri);
                 audio_pipeline_stop(pipeline);
                 audio_pipeline_wait_for_stop(pipeline);
-                // audio_pipeline_terminate(pipeline);
-                audio_element_reset_state(current_decoder);
-                audio_element_reset_state(i2s_stream_writer);
+                // audio_element_reset_state(current_decoder);
+                // audio_element_reset_state(i2s_stream_writer);
                 audio_pipeline_reset_ringbuffer(pipeline);
-                // audio_pipeline_reset_elements(pipeline);
                 audio_pipeline_reset_items_state(pipeline);
                 audio_element_set_uri(http_stream_reader, stations[current_ix].uri);
                 next_decoder = audio_pipeline_get_el_by_tag(pipeline, stations[current_ix].decoder_name);
@@ -295,7 +293,6 @@ void app_main(void)
                     audio_pipeline_set_listener(pipeline, evt);
                 }
                 audio_pipeline_run(pipeline);
-                // audio_pipeline_resume(pipeline);
             } else if ((int) msg.data == get_input_volup_id()) {
                 ESP_LOGI(TAG, "[ * ] [Vol+] touch tap event");
                 player_volume += 10;
