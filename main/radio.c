@@ -323,8 +323,9 @@ void app_main(void)
 
     audio_pipeline_unregister(pipeline, http_stream_reader);
     audio_pipeline_unregister(pipeline, i2s_stream_writer);
-    audio_pipeline_unregister(pipeline, auto_decoder);
-    audio_pipeline_unregister(pipeline, aac_decoder);
+    // audio_pipeline_unregister(pipeline, auto_decoder);
+    // audio_pipeline_unregister(pipeline, aac_decoder);
+    audio_pipeline_unregister(pipeline, current_decoder);
 
     /* Terminate the pipeline before removing the listener */
     audio_pipeline_remove_listener(pipeline);
