@@ -36,6 +36,8 @@ Celem projektu było stworzenie radia internetowego. Gotowy produkt ma następuj
 - IDE: Visual Studio Code + ESP-IDF oficjalny plugin
 - Biblioteki: esp-idf + esp-adf
 
+Warto wspomnieć, że da się ustawić automatyczne wgrywanie programów na płytkę, jednak my z tej możliwości, nie korzystaliśmy. Sami ręcznie wprowadzaliśmy płytkę w stan umożliwiający, usunięcie starego programu i wgranie nowego. Aby to zrobić należy równocześnie wcisnąć przyciski Boot i RST, a następnie je odklikiwać stopniowo, zaczynając od RST.
+
 Plugin do VSC jest szczególnie pomocny. Umożliwia bardzo wiele, w niezwykle przystępny sposób, a jego instalacja jest praktycznie bezproblemowa.
 Feature'y (które są niezwykle wygodne, bo bardzo łatwo je wyszukać - nie zapamiętałem żadnych skrótów klawiszowych poza shif+ctrl/cmd+p na wyszukiwarkę poleceń pluginów) - dodatkowo komendy te wykorzystują stare terminale jeśli jest potrzeba, ale np. monitorowanie mają osobno, więc łatwo mieć dostęp do historii:
 - Budowanie projektu.
@@ -184,14 +186,199 @@ Dodatkowo incjujemy obsługę przycisków. Oba uchwyty dodajemy do piepeline'a.
 ### 4.5 Ustawienie listenera
 // TODO: Kacper
 ### 4.6 Start radia
+To jest główna część radia - cały punkt 4.6 znajduje się w nieskończonej pętli, z której jedynym wyjściem jest naciśnięcie przycisku "mode".
 
 #### 4.6.0 Odbieranie `music_info`
-// TODO: 私
+```c
+audio_event_iface_msg_t msg;
+esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
+if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "[ * ] Event interface error : %d", ret);
+    continue;
+}
+
+if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
+    && msg.source == (void *) current_decoder
+    && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO) {
+    audio_element_info_t music_info = {0};
+    audio_element_getinfo(current_decoder, &music_info);
+
+    ESP_LOGI(TAG, "[ * ] Receive music info from %s using %s, sample_rates=%d, bits=%d, ch=%d",
+                stations[current_ix].name, stations[current_ix].decoder_name, music_info.sample_rates,
+                music_info.bits, music_info.channels);
+
+    audio_element_setinfo(i2s_stream_writer, &music_info);
+    i2s_stream_set_clk(i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
+    continue;
+}
+```
+Słuchamy na interface'sie wszystkich wydarzeń, a następnie postępujemy zgodnie z tym, jakiego typu jest to wydarzenie.
+
+Najpierw sprawdzamy czy nie wydarzył się jakiś błąd i czy funkcja nasłuchująca wydarzeń, zwróciła jakiś błądu. Jeśli tak się stało, po prostu go wypisujemy i pomijamy resztę while'a.
+
+Następnie sprawdzamy, czy powinniśmy zacząć grać muzykę - a więc czy możemy odczytać i ustawić odpowiednie parametry (zapróbkowana częstotliwość, ilu bitowa jest liczba i na ile kanałów jest nadawana muzyka).
+Aby tak było, muszą być spełnione warunki:
+- wiadomość musi dotyczyć audio
+- źródłem musi być obecny dekoder
+- typem komendy elementu odpowiedzialnego za audio musi być "report music info"
+Gdy powyższe warunki są spełnione musimy odpowiednio ustawić wartości strumienia i2s oraz jego zegar.
+Inicjujemy zatem i odczytujemy ustawienia audio, z obecnego dekodera oraz wypisujemy logi o tym zdarzeniu.
+Następnie przy pomocy uzysknych danych, ustawiamy odpowiednie dane strumienia i2s, a następnie jego zegar.
+
+Następnie pomijamy resztę pętli while.
 
 #### 4.6.1 Fail-over
 // TODO: Kacper
 
 #### 4.6.2 Obsługa poszczególnych przycisków
-// TODO: 私
+```c
+if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
+    && (msg.cmd == PERIPH_TOUCH_TAP || msg.cmd == PERIPH_BUTTON_PRESSED)) {
+    
+    if ((int) msg.data == get_input_play_id()) {
+        ESP_LOGI(TAG, "[ * ] [Play] touch tap event");
+        audio_element_state_t el_state = audio_element_get_state(i2s_stream_writer);
+        switch (el_state) {
+            case AEL_STATE_INIT :
+                ESP_LOGI(TAG, "[ * ] Starting audio pipeline");
+                audio_pipeline_run(pipeline);
+                break;
+            case AEL_STATE_RUNNING :
+                ESP_LOGI(TAG, "[ * ] Pausing audio pipeline");
+                audio_pipeline_stop(pipeline);
+                audio_pipeline_wait_for_stop(pipeline);
+                audio_pipeline_reset_ringbuffer(pipeline);
+                audio_pipeline_reset_items_state(pipeline);
+                break;
+            case AEL_STATE_STOPPED :
+                ESP_LOGI(TAG, "[ * ] Resuming audio pipeline");
+                audio_pipeline_resume(pipeline);
+                break;
+            default :
+                ESP_LOGI(TAG, "[ * ] Not supported state %d", el_state);
+        }
+    } else if ((int) msg.data == get_input_set_id()) {
+        ESP_LOGI(TAG, "[ * ] [Set] touch tap event");
+        current_ix = (current_ix+1) % RADIOS_NUMBER;
+        ESP_LOGI(TAG, "[ * ] changin' to radio %d %s", current_ix, stations[current_ix].name);
+        ESP_LOGI(TAG, "[ * ] station's decoder %s and URI: %s", stations[current_ix].decoder_name, stations[current_ix].uri);
+        audio_pipeline_stop(pipeline);
+        audio_pipeline_wait_for_stop(pipeline);
+        audio_pipeline_reset_ringbuffer(pipeline);
+        audio_pipeline_reset_items_state(pipeline);
+        audio_element_set_uri(http_stream_reader, stations[current_ix].uri);
+        next_decoder = audio_pipeline_get_el_by_tag(pipeline, stations[current_ix].decoder_name);
+        if(current_decoder != next_decoder){
+            current_decoder = next_decoder;
+            ESP_LOGI(TAG, "[ * ] changin' decoder to %s", stations[current_ix].decoder_name);
+            audio_pipeline_breakup_elements(pipeline, current_decoder);
+            audio_pipeline_relink(pipeline, (const char* []) {"http", stations[current_ix].decoder_name, "i2s"}, 3);
+            audio_pipeline_set_listener(pipeline, evt);
+        }
+        audio_pipeline_run(pipeline);
+    } else if ((int) msg.data == get_input_volup_id()) {
+        ESP_LOGI(TAG, "[ * ] [Vol+] touch tap event");
+        player_volume += 10;
+        if (player_volume > 100) {
+            player_volume = 100;
+        }
+        audio_hal_set_volume(board_handle->audio_hal, player_volume);
+        ESP_LOGI(TAG, "[ * ] Volume set to %d %%", player_volume);
+    } else if ((int) msg.data == get_input_voldown_id()) {
+        ESP_LOGI(TAG, "[ * ] [Vol-] touch tap event");
+        player_volume -= 10;
+        if (player_volume < 0) {
+            player_volume = 0;
+        }
+        audio_hal_set_volume(board_handle->audio_hal, player_volume);
+        ESP_LOGI(TAG, "[ * ] Volume set to %d %%", player_volume);
+    } else if ((int) msg.data == get_input_mode_id()) {
+        ESP_LOGI(TAG, "[ * ] [Mode] button pressed");
+        break;
+    }
+}
+```
+W tym fragmencie zajmujemy się obsługą przycisków.
+
+Aby zakwalifikować wydarzenie jako przycisk i abyśmy go zaczęli przetwarzać muszą być spełnione następujące oba warunki:
+- Źródłem wiadomości musi być jedno z:
+  - przyciski dotykowe
+  - zwykły przycisk fizyczne
+- Komenda, czyli typ akcji jedna z:
+  - dotknięcie dotykowego przycisku
+  - wciśnięcie zwykłego przycisku
+
+Następnie gdy mamy pewność, że przycisk został wciśnięty, należy go zidentyfikować i wykonać przypisane mu zadanie.
+Przy pomocy pola dane sprawdzamy, który przycisk był wciśnięty - obsługujemy przyciski:
+- Play
+- Set
+- Vol-
+- Vol+
+- Mode (pozostałe są dotykowe, ten jest "normalny")
+
+W zależności od wciśniętego przycisku wykonujemy następującą akcję(od najprostszych):
+- Wyjście z nieskończonego while'a, by zakończyć program i wyłączyć radio,
+- Zmienienie głośności radia,
+- Pausowanie i startowanie/odpauzowywanie radia,
+  - W zależności od obecnego stanu, przechodzimy w następny,
+  - Pierwsze wystartowanie audio pipeline'a robimy run'em, natomiast aby później odpauzować wykorzystujemy tylko resume - główną różnicą jest to, że run dodatkowo tworzy taski dla wszystkich elementów pipeline'a.
+  - Aby zapauzować radio najpierw zatrzymujemy pipeline (i czekamy aż się zatrzyma), ze względu na to, że działamy na streamach, musimy również wyczyścić ringbuffer i zmienić stan itemów, aby później mogły być na nowo ustawione.
+- Zmiana stacji.
+  - Zasadniczo restartujemy stream, odpalając go na nowej stacji - stopujemy pipeline, czyścimy ringbuffer i items state, ustawiamy URI nowej stacji i uruchamiamy stream na nowej stacji.
+  - Dodatkowo sprawdzamy, czy obecny dekoder jest tym samym, na którym będziemy odbierać nową stację - gdy tak nie jest, musimy go zmienić.
+    - Aby zmienić dekoder najpierw zrywamy z pipieline'a obecny dekoder, a następnie linkujemy w pipeline'ie http, obecny dekoder oraz i2s (wszystkie 3 są audio element handlami, a odwołujemy się do nich za pomocą nadanych im nazw podczas rejestracji), na końcu dodajemy event listnera do pipeline'u.
+
+Dodawanie obsługi przycisków jest bardzo proste, natomiast mieliśmy bardzo dużo problemów, z dekoderami które niestety miały swoje problemy oraz zatrzymywaniem i wznawianiem strumienia, w różnych wariantach, a więc i również zmiana stacji. Dlatego też, szczególnie w tych miejscach, możemy mieć nie najbardziej optymalne/poprawne rozwiązanie - za to na pewno jest działające.
+
+Największe problemy z jakimi się tu zetknęliśmy:
+- Nie działa dekoder OGG, pod względem wznawiania jego działania.
+- Dekoder auto, nie radzi sobie z plikami mp4a, mimo że spokojnie powinien - działa chociażby dekoder acc.
+- Musimy traktować każdą pauzę i wznowienie, jako koniec i początek nadawania oraz resetować ringbuffer i stan elementów, ponieważ nie ma sensu pamiętania wszystkich tych rzeczy w przypadku streamu audio - dodatkowo jest kilka dosyć podobnych i zarazem umiarkowanie dobrze opisanych funkcji.
+
 ### 4.7 Zatrzymanie wszystkiego i deinicjalizacja 
-// TODO: 私
+```c
+ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline");
+audio_pipeline_stop(pipeline);
+audio_pipeline_wait_for_stop(pipeline);
+audio_pipeline_terminate(pipeline);
+
+audio_pipeline_unregister(pipeline, http_stream_reader);
+audio_pipeline_unregister(pipeline, i2s_stream_writer);
+audio_pipeline_unregister(pipeline, auto_decoder);
+audio_pipeline_unregister(pipeline, aac_decoder);
+
+/* Terminate the pipeline before removing the listener */
+audio_pipeline_remove_listener(pipeline);
+
+/* Stop all peripherals before removing the listener */
+esp_periph_set_stop_all(set);
+audio_event_iface_remove_listener(esp_periph_set_get_event_iface(set), evt);
+
+/* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
+audio_event_iface_destroy(evt);
+
+/* Release all resources */
+audio_pipeline_deinit(pipeline);
+audio_element_deinit(http_stream_reader);
+audio_element_deinit(i2s_stream_writer);
+audio_element_deinit(auto_decoder);
+audio_element_deinit(aac_decoder);
+esp_periph_set_destroy(set);
+```
+Na sam koniec pozostało nam poodpinanie odpowiednich elementów i deinicjalizację wszystkich wykorzystanych wcześniej komponentów.
+
+Zatrzymujemy zatem cały pipeline i odpinamy od niego wszystkie elementy.
+Zaczynamy od wyrejestrowania http_stream_reader'a, i2s_stream_reader'a oraz obu dekoderów - auto i acc.
+Następnie odpinamy słuchaczy pipeline'a.
+Pozostało już tylko pousuwanie zasobów, ale żeby to zrobić musimy najpierw zatrzymać wszystkie peryferia - domyślne dla ESP oraz ze względu na nasz projekt, moduł wi-fi oraz przyciski.
+Odpinamy słuchaczy peryferiów i dopiero wtedy możemy zniszczyć interface wydarzeń.
+Następnym krokiem jest już uwolnienie wszystkich zasobów, a więc deinicjuejmy oraz niszczymy:
+- piepline
+- http_stream_reader
+- i2s_stream_writer
+- oba dekodery
+  - auto dekoder
+  - aac dekoder
+- zbiór peryferiów
+
+W tym momencie kończy się cała zaimplementowana aplikacja i aby ją uruchomić ponownie, musimy zresetować płytkę, przy pomocy przycisku RST (reset).

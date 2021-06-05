@@ -239,16 +239,14 @@ void app_main(void)
             ESP_LOGW(TAG, "[ * ] Restart stream");
             audio_pipeline_stop(pipeline);
             audio_pipeline_wait_for_stop(pipeline);
-            // audio_element_reset_state(current_decoder);
-            // audio_element_reset_state(i2s_stream_writer);
             audio_pipeline_reset_ringbuffer(pipeline);
             audio_pipeline_reset_items_state(pipeline);
             audio_pipeline_run(pipeline);
             continue;
         }
 
-        if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON || msg.source_type == PERIPH_ID_ADC_BTN)
-            && (msg.cmd == PERIPH_TOUCH_TAP || msg.cmd == PERIPH_TOUCH_LONG_RELEASE || msg.cmd == PERIPH_BUTTON_PRESSED || msg.cmd == PERIPH_ADC_BUTTON_PRESSED)) {
+        if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
+            && (msg.cmd == PERIPH_TOUCH_TAP || msg.cmd == PERIPH_BUTTON_PRESSED)) {
 
             if ((int) msg.data == get_input_play_id()) {
                 ESP_LOGI(TAG, "[ * ] [Play] touch tap event");
@@ -279,8 +277,6 @@ void app_main(void)
                 ESP_LOGI(TAG, "[ * ] station's decoder %s and URI: %s", stations[current_ix].decoder_name, stations[current_ix].uri);
                 audio_pipeline_stop(pipeline);
                 audio_pipeline_wait_for_stop(pipeline);
-                // audio_element_reset_state(current_decoder);
-                // audio_element_reset_state(i2s_stream_writer);
                 audio_pipeline_reset_ringbuffer(pipeline);
                 audio_pipeline_reset_items_state(pipeline);
                 audio_element_set_uri(http_stream_reader, stations[current_ix].uri);
@@ -323,9 +319,8 @@ void app_main(void)
 
     audio_pipeline_unregister(pipeline, http_stream_reader);
     audio_pipeline_unregister(pipeline, i2s_stream_writer);
-    // audio_pipeline_unregister(pipeline, auto_decoder);
-    // audio_pipeline_unregister(pipeline, aac_decoder);
-    audio_pipeline_unregister(pipeline, current_decoder);
+    audio_pipeline_unregister(pipeline, auto_decoder);
+    audio_pipeline_unregister(pipeline, aac_decoder);
 
     /* Terminate the pipeline before removing the listener */
     audio_pipeline_remove_listener(pipeline);
