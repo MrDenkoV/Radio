@@ -45,7 +45,7 @@ Możliwości oficjalnej wtyczki ESP-IDF do Visual Studio Code:
 - Włączenie GUI w którym można zmieniać ustawienia projektu (dane Wi-Fi, rodzaj płytki itp.).
 - Tworzenie nowego projektu, czy to z gotowego przykładu, który chcemy rozbudować, czy po prostu czystego projektu.
 - Mamy możliwość przeprowadzenia debugowania, jednak ta opcja nie była wykorzystywana przy realizacji projektu https://github.com/espressif/vscode-esp-idf-extension/blob/master/docs/tutorial/debugging.md.
-- A nawet jeszcze kilka innych funkcji, które są opisane w oficjalnej dokumentacji https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/vscode-setup.html.
+- Kilka innych funkcji, które są opisane w oficjalnej dokumentacji https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/vscode-setup.html.
 
 Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mimo, że najczęściej używaliśmy build, flash i monitor).
 - Ustawienia projektu zastosowane przy tworzeniu oprogramowania (obraz poglądowy)
@@ -59,7 +59,7 @@ Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mim
 // TODO: porównać (można wyciągnąć gdzieś indziej)
 
 ### 4.0 Nagłówki
-Poniżej umieszczono listing kodu, w którym są załączane pliki nagłówkowe potrzebne do realizacji projektu:
+Poniżej umieszczono listing kodu, w którym są załączane pliki nagłówkowe potrzebne do realizacji projektu. Wykomentowane linie demonstrują jak łatwo można załączać nowe dekodery.
 ```c
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -103,7 +103,7 @@ static const char *TAG = "RADIO";
 ```
 
 ### 4.1 Lista obsługiwanych stacji
-Poniżej przedstawiono listing, w którym ... // TODO
+Poniżej przedstawiono listing, w którym definiujemy pomocniczą strukturę stacji oraz listę predefiniowanych stacji.
 ```c
 typedef struct{
     char* name;
@@ -158,9 +158,9 @@ Daną stację opisuje specjalna struktura `radio_station_t`, w której trzymamy:
 - nazwę dekodera, którego chcemy użyć do odbierania tej stacji (o dostępnych dekoderach i działadniu więcej w sekcji 4.3)
 - URI stacji (link bezpośrednio do pliku z streamem audio, lub do pliku z playlistą .m3u8)
 
-Playlisty .m3u8 (w zasadzie M3U, m3u8 to M3U kodowane w UTF-8) to niewielkie pliki tekstowe. Szczegółowe informacje na ich temat można przeczytać tutaj: [m3u8 - wiki](https://en.wikipedia.org/wiki/M3U).
+Playlisty .m3u8 (w zasadzie M3U, m3u8 to M3U kodowane w UTF-8) to niewielkie pliki tekstowe. Szczegółowe informacje na ich temat można przeczytać tutaj: https://en.wikipedia.org/wiki/M3U.
 
-Poza opcjonalnymi metadanymi po prostu zawierają adresy elementów playlisty. Element zawiera adres bezwzględny, lub względny (względem folderu, w którym znajduje się playlista) do docelowego pliku. W sczególności może istnieć playlista jednoelementowa lub elementem playlisty może być inna playlista. W przypadku playlisty konkretnego radia internetowego bardzo częstym przypadkiem jest stworzenie playlisty, której elementami są // TODO: wyjaśnić "mirror stream" mirror streamy; dzięki takiemu rozwiązaniu gdy jeden stream ulegnie awarii odbiornik radia automatycznie przełącza się na kolejny adres z playlisty.
+Poza opcjonalnymi metadanymi po prostu zawierają adresy elementów playlisty. Element zawiera adres bezwzględny, lub względny (względem folderu, w którym znajduje się playlista) do docelowego pliku. W sczególności może istnieć playlista jednoelementowa lub elementem playlisty może być inna playlista. W przypadku playlisty konkretnego radia internetowego bardzo częstym jest tworzenie playlisty, której elementami są zapasowe streamy; dzięki takiemu rozwiązaniu gdy jeden stream ulegnie awarii odbiornik radia automatycznie przełącza się na kolejny adres z playlisty.
 
 ### 4.2 Inicjalizacja interfejsu HAL
 ```c
@@ -215,9 +215,9 @@ Następnie tworzymy poszczególne elementy:
   i2s_cfg.type = AUDIO_STREAM_WRITER;
   i2s_stream_writer = i2s_stream_init(&i2s_cfg);
   ```
-- Pomiędzy tymi dwoma elementami musimy umieścić jeszcze dekoder audio. Esp-adf udostępnia nam wiele różnych dekoderów audio, pełną listę możemy znaleźć w katalogu `esp-adf-libs/esp_codec/include/codec/`. Niestety dostępne są jedynie pliki nagłówkowe a same dekodery są udostępnione jedynie jako biblioteki statyczne w pliku `esp-adf-libs/esp_codec/lib/esp32/libesp_codec.a`.  
+- Pomiędzy tymi dwoma elementami należy umieścić jeszcze dekoder audio. Esp-adf udostępnia nam wiele różnych dekoderów audio, pełną listę możemy znaleźć w katalogu `esp-adf-libs/esp_codec/include/codec/`. Niestety dostępne są jedynie pliki nagłówkowe a same dekodery są udostępnione jedynie jako biblioteki statyczne w pliku `esp-adf-libs/esp_codec/lib/esp32/libesp_codec.a`.  
 
-  W naszym przypadku korzystamy jedynie z dekoderów mp3 oraz aac. Ciekawa jest możliwość stworzenia auto-dekodera, któremu zadajemy listę dekoderów a on automatycznie rozpoznaje, któego należy użyć w momencie gdy dostaje pierwsze dane na wejście.
+  W naszym przypadku korzystamy jedynie z dekoderów mp3 oraz aac. Ciekawa jest możliwość stworzenia auto-dekodera, któremu zadaje się listę dekoderów a on automatycznie rozpoznaje, którego należy użyć w momencie gdy dostaje pierwsze dane na wejście.
   - dekoder aac
     ```c
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
@@ -233,10 +233,10 @@ Następnie tworzymy poszczególne elementy:
     esp_decoder_cfg_t auto_dec_cfg = DEFAULT_ESP_DECODER_CONFIG();
     auto_decoder = esp_decoder_init(&auto_dec_cfg, auto_decode, sizeof(auto_decode) / sizeof(audio_decoder_t));
     ```
-    Po przetestowaniu auto-dekodera na różnych stacjach radiowych okazało się, że radzi sobie dobrze z plikami .aac oraz .mp3 i wtedy właśnie go używamy. Natomiast w przypadku pliku .mp4a nie rozpoznaje go odpowiednio i wtedy wymuszamy stosowanie dekodera aac.
-  - dekoder ogg: niestety okazało się, że posiada wadę i nie udało nam się go wykorzystać w celu dekodowania stacji radiowych w tym formacie. (znaleźliśmy wątek w którym inna osoba opisuje ten sam problem ale nie posiada rozwiązania: https://esp32.com/viewtopic.php?t=16693). W liście stacji pozostawiliśmy zakomentowaną stację, która z tego powodu nie działała, żeby o tym pamiętać.
+    Po przetestowaniu auto-dekodera na różnych stacjach radiowych okazało się, że radzi sobie dobrze z plikami .aac oraz .mp3 i wtedy właśnie jest używany. Natomiast w przypadku pliku .mp4a nie rozpoznaje go odpowiednio i wtedy wymuszane jest stosowanie dekodera aac.
+  - dekoder ogg: niestety okazało się, że posiada wadę i nie udało nam się go wykorzystać w celu dekodowania stacji radiowych w tym formacie. (znaleźliśmy wątek w którym inna osoba opisuje ten sam problem ale nie posiada rozwiązania: https://esp32.com/viewtopic.php?t=16693). W liście stacji pozostawiliśmy wykomentowaną stację, która z tego powodu nie działała, żeby o tym pamiętać.
 
-Po stworzeniu wszystkich elementów spinamy je w jeden pipeline:
+Po stworzeniu wszystkich elementów są one łączone w jeden pipeline:
 ```c
 audio_pipeline_register(pipeline, http_stream_reader, "http");
 audio_pipeline_register(pipeline, auto_decoder,        "auto");
@@ -252,12 +252,13 @@ audio_pipeline_link(pipeline, (const char *[]) {"http", stations[current_ix].dec
 1) zarejestrowaniu wszystkich elementów do pipeline'u wraz z przypisaniem każdemu unikalnej nazwy
 2) podaniu ciągu nazw, który odzwierciedla kolejność elementów. W szczególności możemy zarejestrować więcej elementów niż używamy i właśnie to się dzieje powyżej, ponieważ rejestrujemy oba dekodery `"auto"` i `"aac"` natomiast w danym momencie używamy jedynie jednego z nich.
 
-Na koniec jeszcze w ustalamy URI, z którego `http_stream` ma pobierać dane:
+Na koniec jeszcze podajemy URI, z którego `http_stream` ma pobierać dane:
 ```c
 audio_element_set_uri(http_stream_reader, stations[current_ix].uri);
 ```
 
-### 4.4 Konfiguracja wi-fi i przycisków - peryferia
+### 4.4 Konfiguracja Wi-Fi i przycisków
+Poniżej listing z standardową konfiguracją modułu Wi-Fi oraz inicjalizacją obsługi przycisków
 ```c
 esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
 esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
@@ -270,11 +271,10 @@ audio_board_key_init(set);
 esp_periph_start(set, wifi_handle);
 periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
 ```
-Standardowa konfiguracja, SSID oraz hasło podajemy w pliku konfiguracyjnym.
-Dodatkowo incjujemy obsługę przycisków. Oba uchwyty dodajemy do piepeline'a.
+SSID oraz hasło sieci Wi-Fi podajemy w pliku konfiguracyjnym.
 
 ### 4.5 Ustawienie listenera
-Poza przetwarzaniem danych w pipeline potrzebujemy jakiegoś sposobu na komunikacje pomiędzy użytkownikiem a aplikacją. Do tego właśnie służą wydarzenia, które mogą być wysyłane przez zarówno pipeline (poszczególne elemty je wysyłają ale są przekazywane przez pipeline) jak i peryferia naszej płytki (np. przyciski).
+Poza przetwarzaniem danych w pipeline potrzebujemy sposobu na komunikacje pomiędzy użytkownikiem a aplikacją. Do tego celu służą wydarzenia, które mogą być wysyłane przez zarówno pipeline jak i peryferia naszej płytki (np. przyciski).
 
 Tworzymy naszego listenera, który będzie nasłuchiwał komunikatów:
 ```c
@@ -292,9 +292,7 @@ audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
 ```
 
 ### 4.6 Uruchomienie odtwarzania stacji radiowej
-To jest główna część radia - cały punkt 4.6 znajduje się w nieskończonej pętli, z której jedynym wyjściem jest naciśnięcie przycisku "mode".
-
-#### 4.6.0 Odbieranie `music_info`
+Cały punkt 4.6 znajduje się w nieskończonej pętli, z której jedynym wyjściem jest naciśnięcie przycisku "mode". W każdym obiegu pętli na początku oczekujemy na wydarzenie za pomocą listenera (punkt 4.5). W punktach 4.6.0, 4.6.1 oraz 4.6.2 opisana jest obsługa różnych typów wydarzeń.
 ```c
 audio_event_iface_msg_t msg;
 esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
@@ -302,7 +300,9 @@ if (ret != ESP_OK) {
     ESP_LOGE(TAG, "[ * ] Event interface error : %d", ret);
     continue;
 }
-
+```
+#### 4.6.0 Odbieranie informacji o strumieniu audio
+```c
 if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
     && msg.source == (void *) current_decoder
     && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO) {
@@ -318,20 +318,16 @@ if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
     continue;
 }
 ```
-Odczytujemy dane z interface'sie wszystkich wydarzeń, a następnie postępujemy zgodnie z tym, jakiego typu jest to wydarzenie.
+Komunikat zawierający informacje o strumieniu audio, musi spełniać następujące warunki:
+- jego źródłem musi być obecny dekoder
+- typem komendy musi być `AEL_MSG_CMD_REPORT_MUSIC_INFO`
 
-Najpierw sprawdzamy czy nie wydarzył się jakiś błąd i czy funkcja nasłuchująca wydarzeń, zwróciła jakiś błądu. Jeśli tak się stało, po prostu go wypisujemy i pomijamy resztę while'a.
+Komunikat sam w sobie nie zawiera danych. Powiadamia nas jedynie o danych, które należy pobrać z dekodera audio. Są to:
+- częstotliwość próbkowania
+- rozdzielczość bitowa
+- liczba kanałów
 
-Następnie sprawdzamy, czy powinniśmy rozpocząć odtwarzanie stacji radiowej - a więc czy możemy odczytać i ustawić odpowiednie parametry (// TODO: zapróbkowana częstotliwość, ilu bitowa jest liczba i na ile kanałów jest nadawana muzyka).
-Aby tak było, muszą być spełnione warunki:
-- wiadomość musi dotyczyć audio
-- źródłem musi być obecny dekoder
-- typem komendy elementu odpowiedzialnego za audio musi być "report music info"
-Gdy powyższe warunki są spełnione musimy odpowiednio ustawić wartości strumienia i2s oraz jego zegar.
-Inicjujemy zatem i odczytujemy ustawienia audio, z obecnego dekodera oraz wypisujemy logi o tym zdarzeniu.
-Następnie przy pomocy uzysknych danych, ustawiamy odpowiednie dane strumienia i2s, a następnie jego zegar.
-
-Następnie pomijamy resztę pętli while.
+Powyższe dane przekazujemy do strumienia i2s w celu jego odpowiedniej konfiguracji dla aktualnego strumienia audio.
 
 #### 4.6.1 Fail-over
 Czasami zdarzają się błedy odczytu w elemencie `http_stream`. Wówczas dostajemy odpowiedni komunikat i w celu uniknięcia dalszych błędów spowodowanych propagowaniem błędnych danych w głąb pipeline'u restartujemy go:
@@ -348,8 +344,7 @@ Czasami zdarzają się błedy odczytu w elemencie `http_stream`. Wówczas dostaj
             continue;
         }
 ```
-W tym miejscu widzimy wygodę interfejsu `audio_pipeline`, który pozwala nam np. resetować stan wszystkich elementów.
-
+Istotne jest wywołanie wszystkich wyżej wylistowanych komend w celu poprawnego zrestartowania pipeline'u. W tym miejscu widzimy wygodę interfejsu `audio_pipeline`, który pozwala nam np. resetować stan wszystkich elementów czy też czyścić `ring_buffer`.
 
 #### 4.6.2 Obsługa poszczególnych przycisków
 ```c
@@ -419,8 +414,6 @@ if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
     }
 }
 ```
-W tym fragmencie zajmujemy się obsługą przycisków.
-
 Aby zakwalifikować wydarzenie jako przycisk i abyśmy go zaczęli przetwarzać muszą być spełnione następujące oba warunki:
 - Źródłem wiadomości musi być jedno z:
   - przyciski dotykowe
