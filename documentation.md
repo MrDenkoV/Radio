@@ -30,31 +30,24 @@ Celem projektu było stworzenie radia internetowego. Gotowy produkt ma następuj
 
 ## 3. Stos technologiczny
 
-- Platforman sprzętowa: ESP32-LyraT V4.3
+- Platforma sprzętowa: ESP32-LyraT V4.3
 - Język programowania: C
 - IDE: Visual Studio Code + ESP-IDF oficjalny plugin
 - Biblioteki: esp-idf + esp-adf
 
-// TODO: nieprecyzyjnie
-Warto wspomnieć, że jest możliwe ustawianie automatycznego wgrywania programów na płytkę, jednak my z tej możliwości, nie korzystaliśmy. Sami ręcznie wprowadzaliśmy płytkę w stan umożliwiający, usunięcie starego programu i wgranie nowego. Aby to zrobić należy równocześnie wcisnąć przyciski Boot i RST, a następnie je odklikiwać stopniowo, zaczynając od RST.
-
-Plugin do VSC jest szczególnie pomocny. Umożliwia bardzo wiele, w niezwykle przystępny sposób, a jego instalacja jest praktycznie bezproblemowa.
-// TODO: usunąć nawiasy (?), lepiej podrzędne zdanie
-Funkcjonalności (które są niezwykle wygodne, bo bardzo łatwo je wyszukać - 
-// TODO: wtrącenie jest subiektywne, lepiej osobny punkt zbiorczy
-nie zapamiętałem żadnych skrótów klawiszowych poza shif+ctrl/cmd+p na wyszukiwarkę poleceń pluginów) - dodatkowo komendy te wykorzystują stare terminale jeśli jest potrzeba, ale np. monitorowanie mają osobno, więc łatwo mieć dostęp do historii:
-
+Możliwości oficjalnej wtyczki ESP-IDF do Visual Studio Code:
 - Budowanie projektu.
 - Czyszczenie projektu.
-- Wybieranie portu na którym należy wgrać program (Flash).
+- Wybieranie portu na który należy wgrać program (Flash).
+- Wgrywanie programu na płytkę - domyślnie JTAG, ale można wybrać UART.
 - Monitorowanie portu, aby móc odczytywać komunikaty z płytki.
-- Mamy możliwość przeprowadzenia debugowania, jednak ta opcja nie była wykorzystywana przy realizacji projektu.
-- Można przeanalizować rozmiary binarek pod względem wykorzystania ramu.
-- Włączenie przyjemnego GUI w którym można zmieniać ustawienia projektu (wi-fi, rodzaj płytki itp.).
+- Analiza rozmiaru plików binarnych pod względem wykorzystania ramu.
+- Włączenie GUI w którym można zmieniać ustawienia projektu (dane Wi-Fi, rodzaj płytki itp.).
 - Tworzenie nowego projektu, czy to z gotowego przykładu, który chcemy rozbudować, czy po prostu czystego projektu.
-- I pewnie jeszcze trochę innych rzeczy, z których nie korzystaliśmy.
+- Mamy możliwość przeprowadzenia debugowania, jednak ta opcja nie była wykorzystywana przy realizacji projektu https://github.com/espressif/vscode-esp-idf-extension/blob/master/docs/tutorial/debugging.md.
+- A nawet jeszcze kilka innych funkcji, które są opisane w oficjalnej dokumentacji https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/vscode-setup.html.
 
-Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mimo, że najczęściej używaliśmy build, flash i monitor)
+Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mimo, że najczęściej używaliśmy build, flash i monitor).
 - Ustawienia projektu zastosowane przy tworzeniu oprogramowania (obraz poglądowy)
   ![settings](sets.png)
 - Analiza wykorzystywanej pamięci (obraz poglądowy)
