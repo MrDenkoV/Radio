@@ -89,6 +89,16 @@ radio_station_t stations[] = {
         .name = "station6",
         .decoder_name = "aac", // mp4a
         .uri = "http://sk.cri.cn/hyhq.m3u8"
+    },
+    {
+        .name = "station7",
+        .decoder_name = "auto", // mp3
+        .uri = "http://musicbird.leanstream.co/JCB075-MP3"
+    },
+    {
+        .name = "station8",
+        .decoder_name = "auto", // mp3
+        .uri = "https://musicbird.leanstream.co/JCB064-MP3"
     }
 };
 
