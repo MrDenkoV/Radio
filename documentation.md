@@ -1,20 +1,19 @@
-# Dokumentacja
+<div style="text-align: right"> Stanisław Denkowski, Kacper Karoń 09.06.2021</div>
+# Dokumentacja projektu radia internetowego na platformie ESP32 LyraT
 
-## 1. Schemat urządzenia i środowisko w którym działa
+## 1. Schemat urządzenia i fizyczne środowisko
 
-Schemat
-![boardirl](boardirl.jpg)
-![boardschem](boardschem.jpg)
+<img src="boardirl.jpg" alt="boardirl" style="zoom: 80%;" />
+*Powyższe zdjęcie zostało skopiowane z oficjalnej dokumentacji płytki: https://docs.espressif.com/projects/esp-adf/en/latest/get-started/get-started-esp32-lyrat.html* 
+<img src="boardschem.jpg" alt="boardschem" style="zoom:80%;" />
+*Powyższy diagram został skopiowany z oficjalnej dokumentacji płytki: https://docs.espressif.com/projects/esp-adf/en/latest/get-started/get-started-esp32-lyrat.html*
+
 Wykorzysujemy:
-- lyraT
-  - dekoder
-  - moduł wi-fi
-  - przyciski dotykowe i "normalne"
-- wi-fi
-- głośniki
-- zasilanie - bezpośrednie podłączenie do USB
 
-[Espressify - documentation](https://docs.espressif.com/projects/esp-adf/en/latest/get-started/get-started-esp32-lyrat.html)
+- ESP32-LyraT V4.3
+- Access Point Wi-Fi
+- dodatkowe głośniki dołączone do płytki
+- zasilanie z portu USB komputera
 
 ## 2. Zrealizowane funkcjonalności
 
@@ -23,7 +22,7 @@ Celem projektu było stworzenie radia internetowego. Gotowy produkt ma następuj
   - działają zarówno strony streamujące plik, jak i parsowanie playlist (zakodowanych np. w m3u8)
 - obsługiwane jest wiele formatów kodowania:
   - dekoder "auto" automatycznie rozpoznaje pliki mp3 i aac 
-  - dekoder aac jest ustawiony ręcznie dla plików mp4a (niestety dekoder auto miał problem z odpowiednim rozpoznawaniem tego formatu)
+  - dekoder aac jest ustawiony ręcznie dla plików mp4a (niestety dekoder "auto" miał problem z odpowiednim rozpoznawaniem tego formatu)
 - możliwość przechodzenia za pomocą przycisku SET cylkicznie po liście stacji
 - możliwość regulacji głośności za pomocą przycisków VOL+, VOL-
 - możliwość przerywania i wznawiania odtwarzania radia za pomocą przycisku PLAY
@@ -31,35 +30,43 @@ Celem projektu było stworzenie radia internetowego. Gotowy produkt ma następuj
 
 ## 3. Stos technologiczny
 
-- Platforman sprzętowa: lyraT v4.3
+- Platforman sprzętowa: ESP32-LyraT V4.3
 - Język programowania: C
 - IDE: Visual Studio Code + ESP-IDF oficjalny plugin
 - Biblioteki: esp-idf + esp-adf
 
-Warto wspomnieć, że da się ustawić automatyczne wgrywanie programów na płytkę, jednak my z tej możliwości, nie korzystaliśmy. Sami ręcznie wprowadzaliśmy płytkę w stan umożliwiający, usunięcie starego programu i wgranie nowego. Aby to zrobić należy równocześnie wcisnąć przyciski Boot i RST, a następnie je odklikiwać stopniowo, zaczynając od RST.
+// TODO: nieprecyzyjnie
+Warto wspomnieć, że jest możliwe ustawianie automatycznego wgrywania programów na płytkę, jednak my z tej możliwości, nie korzystaliśmy. Sami ręcznie wprowadzaliśmy płytkę w stan umożliwiający, usunięcie starego programu i wgranie nowego. Aby to zrobić należy równocześnie wcisnąć przyciski Boot i RST, a następnie je odklikiwać stopniowo, zaczynając od RST.
 
 Plugin do VSC jest szczególnie pomocny. Umożliwia bardzo wiele, w niezwykle przystępny sposób, a jego instalacja jest praktycznie bezproblemowa.
-Feature'y (które są niezwykle wygodne, bo bardzo łatwo je wyszukać - nie zapamiętałem żadnych skrótów klawiszowych poza shif+ctrl/cmd+p na wyszukiwarkę poleceń pluginów) - dodatkowo komendy te wykorzystują stare terminale jeśli jest potrzeba, ale np. monitorowanie mają osobno, więc łatwo mieć dostęp do historii:
+// TODO: usunąć nawiasy (?), lepiej podrzędne zdanie
+Funkcjonalności (które są niezwykle wygodne, bo bardzo łatwo je wyszukać - 
+// TODO: wtrącenie jest subiektywne, lepiej osobny punkt zbiorczy
+nie zapamiętałem żadnych skrótów klawiszowych poza shif+ctrl/cmd+p na wyszukiwarkę poleceń pluginów) - dodatkowo komendy te wykorzystują stare terminale jeśli jest potrzeba, ale np. monitorowanie mają osobno, więc łatwo mieć dostęp do historii:
+
 - Budowanie projektu.
 - Czyszczenie projektu.
 - Wybieranie portu na którym należy wgrać program (Flash).
 - Monitorowanie portu, aby móc odczytywać komunikaty z płytki.
-- Można debugować, ale z tego akurat nie korzystaliśmy.
+- Mamy możliwość przeprowadzenia debugowania, jednak ta opcja nie była wykorzystywana przy realizacji projektu.
 - Można przeanalizować rozmiary binarek pod względem wykorzystania ramu.
 - Włączenie przyjemnego GUI w którym można zmieniać ustawienia projektu (wi-fi, rodzaj płytki itp.).
 - Tworzenie nowego projektu, czy to z gotowego przykładu, który chcemy rozbudować, czy po prostu czystego projektu.
 - I pewnie jeszcze trochę innych rzeczy, z których nie korzystaliśmy.
 
 Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mimo, że najczęściej używaliśmy build, flash i monitor)
-- Ustawienia projektu
+- Ustawienia projektu zastosowane przy tworzeniu oprogramowania (obraz poglądowy)
   ![settings](sets.png)
-- Analiza wykorzystywanej pamięci;
+- Analiza wykorzystywanej pamięci (obraz poglądowy)
   ![memory1](mem1.png)
   ![memory2](mem2.png)
 
 ## 4. Opis kluczowych części projektu zrealizowanych samodzielnie
+// TODO: link do szkieletowego projektu
+// TODO: porównać (można wyciągnąć gdzieś indziej)
 
 ### 4.0 Nagłówki
+Poniżej umieszczono listing kodu, w którym są załączane pliki nagłówkowe potrzebne do realizacji projektu:
 ```c
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -103,6 +110,7 @@ static const char *TAG = "RADIO";
 ```
 
 ### 4.1 Lista obsługiwanych stacji
+Poniżej przedstawiono listing, w którym ... // TODO
 ```c
 typedef struct{
     char* name;
@@ -159,14 +167,14 @@ Daną stację opisuje specjalna struktura `radio_station_t`, w której trzymamy:
 
 Playlisty .m3u8 (w zasadzie M3U, m3u8 to M3U kodowane w UTF-8) to niewielkie pliki tekstowe. Szczegółowe informacje na ich temat można przeczytać tutaj: [m3u8 - wiki](https://en.wikipedia.org/wiki/M3U).
 
-Poza opcjonalnymi metadanymi po prostu zawierają adresy elementów playlisty. Element zawiera adres bezwzględny, lub względny (względem folderu, w którym znajduje się playlista) do docelowego pliku. W sczególności może istnieć playlista jednoelementowa lub elementem playlisty może być inna playlista. W przypadku playlisty konkretnego radia internetowego bardzo częstym przypadkiem jest stworzenie playlisty, której elementami są mirror streamy; dzięki takiemu rozwiązaniu gdy jeden stream ulegnie awarii odbiornik radia automatycznie przełącza się na kolejny adres z playlisty.
+Poza opcjonalnymi metadanymi po prostu zawierają adresy elementów playlisty. Element zawiera adres bezwzględny, lub względny (względem folderu, w którym znajduje się playlista) do docelowego pliku. W sczególności może istnieć playlista jednoelementowa lub elementem playlisty może być inna playlista. W przypadku playlisty konkretnego radia internetowego bardzo częstym przypadkiem jest stworzenie playlisty, której elementami są // TODO: wyjaśnić "mirror stream" mirror streamy; dzięki takiemu rozwiązaniu gdy jeden stream ulegnie awarii odbiornik radia automatycznie przełącza się na kolejny adres z playlisty.
 
 ### 4.2 Inicjalizacja interfejsu HAL
 ```c
 audio_board_handle_t board_handle = audio_board_init();
 audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
 ```
-Inicjalizacja interfejsu HAL płytki. Jest to interfejs stanowiący warstwę abstrakcji pomiędzy wygodnymi dla użytkownika funkcjami a specyficznymi sterownikami sprzętowymi dla konkretnej płytki (w naszym przypadku `lyra_v4_3`). Interfejs pozwala nam np. konfigurować sampling rate dla ADC oraz DAC, szerokość bitów, parametry I2C oraz głośność. Można znaleźć specyficzne dla danej płytki konfiguracje w katalogu `esp-adf/components/audio_board/<nazwa_płytki>/`. Na przykład konfiguracja dla naszej płytki wygląda tak:  
+Inicjalizacja interfejsu HAL płytki. Jest to interfejs stanowiący warstwę abstrakcji pomiędzy wygodnymi dla użytkownika funkcjami a specyficznymi sterownikami sprzętowymi dla konkretnej płytki (w naszym przypadku `lyra_v4_3`). Interfejs pozwala nam np. konfigurować częstotliwość próbkowania dla ADC oraz DAC, szerokość bitów, parametry I2S oraz głośność. Można znaleźć specyficzne dla danej płytki konfiguracje w katalogu `esp-adf/components/audio_board/<nazwa_płytki>/`. Na przykład konfiguracja dla naszej płytki wygląda tak:  
 (plik `esp-adf/components/audio_board/lyra_v4_3/board_def.h`)
 ```c
 #define AUDIO_CODEC_DEFAULT_CONFIG(){                   \
@@ -185,7 +193,7 @@ Inicjalizacja interfejsu HAL płytki. Jest to interfejs stanowiący warstwę abs
 Po inicjalizacji interfejsu (funkcja `audio_board_init`) jeszcze należy uruchomić kodek w trybie dekodującym (jedynie będziemy dekodować dane, gdybyśmy potrzebowali równocześnie korzystać np. z mikrofonu i nagrywać audio w celu zapisania w formacie .mp3 musielibyśmy zamiast `AUDIO_HAL_CODEC_MODE_DECODE` ustawić `AUDIO_HAL_CODEC_MODE_BOTH`)
 
 ### 4.3 Konfiguracja `audio_pipelnie`
-Podstawowym klockiem, z którego korzystamy podczas tworzenia aplikacji z biblioteką esp-adf jest `audio_element`. Wszystkie dekodery, enkodery, filtry, strumienie wejściowe oraz wyjściowe są właśnie `audio_element`. Zadaniem każdego elementu jest dostanie danych na wejściu, przetworzenie ich oraz przekazanie na wyjście.
+Podstawowym blokiem, z którego korzystamy podczas tworzenia aplikacji z biblioteką esp-adf jest `audio_element`. Wszystkie dekodery, enkodery, filtry, strumienie wejściowe oraz wyjściowe są właśnie `audio_element`. Zadaniem każdego elementu jest dostanie danych na wejściu, przetworzenie ich oraz przekazanie na wyjście.
 
 Dzięki takiemu funkcyjnemu podejściu bardzo naturalne wydaje się składanie kilku elementów w celu stworzenia właśnie `audio_pipeline`, który zawiera kilka `audio_element`ów połączonych w pewien ciąg. Przykładowo:
 ![Audio Pipeline Example](audio_pipeline_example.png)  
@@ -222,6 +230,7 @@ Następnie tworzymy poszczególne elementy:
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
     aac_decoder = aac_decoder_init(&aac_cfg);
     ```
+    
   - auto-dekoder zawierający dekodery aac oraz mp3
     ```c
     audio_decoder_t auto_decode[] = {
@@ -231,7 +240,8 @@ Następnie tworzymy poszczególne elementy:
     esp_decoder_cfg_t auto_dec_cfg = DEFAULT_ESP_DECODER_CONFIG();
     auto_decoder = esp_decoder_init(&auto_dec_cfg, auto_decode, sizeof(auto_decode) / sizeof(audio_decoder_t));
     ```
-  Po przetestowaniu auto-dekodera na różnych stacjach radiowych okazało się, że radzi sobie dobrze z plikami .aac oraz .mp3 i wtedy właśnie go używamy. Natomiast w przypadku pliku .mp4a nie rozpoznaje go odpowiednio i wtedy wymuszamy stosowanie dekodera aac.
+    Po przetestowaniu auto-dekodera na różnych stacjach radiowych okazało się, że radzi sobie dobrze z plikami .aac oraz .mp3 i wtedy właśnie go używamy. Natomiast w przypadku pliku .mp4a nie rozpoznaje go odpowiednio i wtedy wymuszamy stosowanie dekodera aac.
+  - dekoder ogg: niestety okazało się, że posiada wadę i nie udało nam się go wykorzystać w celu dekodowania stacji radiowych w tym formacie. (znaleźliśmy wątek w którym inna osoba opisuje ten sam problem ale nie posiada rozwiązania: https://esp32.com/viewtopic.php?t=16693). W liście stacji pozostawiliśmy zakomentowaną stację, która z tego powodu nie działała, żeby o tym pamiętać.
 
 Po stworzeniu wszystkich elementów spinamy je w jeden pipeline:
 ```c
@@ -288,7 +298,7 @@ oraz z peryferii płytki:
 audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
 ```
 
-### 4.6 Start radia
+### 4.6 Uruchomienie odtwarzania stacji radiowej
 To jest główna część radia - cały punkt 4.6 znajduje się w nieskończonej pętli, z której jedynym wyjściem jest naciśnięcie przycisku "mode".
 
 #### 4.6.0 Odbieranie `music_info`
@@ -315,11 +325,11 @@ if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
     continue;
 }
 ```
-Słuchamy na interface'sie wszystkich wydarzeń, a następnie postępujemy zgodnie z tym, jakiego typu jest to wydarzenie.
+Odczytujemy dane z interface'sie wszystkich wydarzeń, a następnie postępujemy zgodnie z tym, jakiego typu jest to wydarzenie.
 
 Najpierw sprawdzamy czy nie wydarzył się jakiś błąd i czy funkcja nasłuchująca wydarzeń, zwróciła jakiś błądu. Jeśli tak się stało, po prostu go wypisujemy i pomijamy resztę while'a.
 
-Następnie sprawdzamy, czy powinniśmy zacząć grać muzykę - a więc czy możemy odczytać i ustawić odpowiednie parametry (zapróbkowana częstotliwość, ilu bitowa jest liczba i na ile kanałów jest nadawana muzyka).
+Następnie sprawdzamy, czy powinniśmy rozpocząć odtwarzanie stacji radiowej - a więc czy możemy odczytać i ustawić odpowiednie parametry (// TODO: zapróbkowana częstotliwość, ilu bitowa jest liczba i na ile kanałów jest nadawana muzyka).
 Aby tak było, muszą być spełnione warunki:
 - wiadomość musi dotyczyć audio
 - źródłem musi być obecny dekoder
