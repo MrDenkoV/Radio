@@ -1,4 +1,5 @@
 <div style="text-align: right"> Stanisław Denkowski, Kacper Karoń 09.06.2021</div>
+
 # Dokumentacja projektu radia internetowego na platformie ESP32 LyraT
 
 ## 1. Schemat urządzenia i fizyczne środowisko
