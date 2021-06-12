@@ -54,10 +54,7 @@ Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mim
   ![memory1](mem1.png)
   ![memory2](mem2.png)
 
-## 4. Opis kluczowych części projektu zrealizowanych samodzielnie
-// TODO: link do szkieletowego projektu
-// TODO: porównać (można wyciągnąć gdzieś indziej)
-
+## 4. Opis projektu
 ### 4.0 Nagłówki
 Poniżej umieszczono listing kodu, w którym są załączane pliki nagłówkowe potrzebne do realizacji projektu. Wykomentowane linie demonstrują jak łatwo można załączać nowe dekodery.
 ```c
@@ -347,10 +344,23 @@ Czasami zdarzają się błedy odczytu w elemencie `http_stream`. Wówczas dostaj
 Istotne jest wywołanie wszystkich wyżej wylistowanych komend w celu poprawnego zrestartowania pipeline'u. W tym miejscu widzimy wygodę interfejsu `audio_pipeline`, który pozwala nam np. resetować stan wszystkich elementów czy też czyścić `ring_buffer`.
 
 #### 4.6.2 Obsługa poszczególnych przycisków
+Aby zakwalifikować wydarzenie jako przycisk i abyśmy go zaczęli przetwarzać muszą być spełnione następujące oba warunki:
+- Źródłem wiadomości musi być jedno z:
+  - przyciski dotykowe
+  - zwykłe przyciski fizyczne
+- Komenda, czyli typ akcji jedną z:
+  - dotknięcie dotykowego przycisku
+  - wciśnięcie zwykłego przycisku
 ```c
 if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
     && (msg.cmd == PERIPH_TOUCH_TAP || msg.cmd == PERIPH_BUTTON_PRESSED)) {
-    
+```
+
+Taka wiadomość w polu `data` posiada liczbę, która identyfikuje jednoznacznie przycisk. Mamy do dyspozycji specjalne funkcje zwracające identyfikatory dla poszczególnych przycisków `get_iput_<nazwa_przycisku>_id()`. W przypadku płytky ESP32-LyraT V4.3, możemy znaleźć wszystkie dostępne przyciski w pliku: `esp-adf/components/audio_board/lyrat_v4_3/board_pins_config.c`
+
+W zależności od przycisku wykonujemy następujące akcje:
+- `play` (przycisk dotykowy)  
+  ```c
     if ((int) msg.data == get_input_play_id()) {
         ESP_LOGI(TAG, "[ * ] [Play] touch tap event");
         audio_element_state_t el_state = audio_element_get_state(i2s_stream_writer);
@@ -373,6 +383,12 @@ if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
             default :
                 ESP_LOGI(TAG, "[ * ] Not supported state %d", el_state);
         }
+  ```
+  W zależności od aktualnego stanu radia zatrzymuje odtwarzanie audio lub je wznawia.
+  - Startowanie po raz pierwszy wymaga użycia funkcji `audio_pipeline_run` natomiast do wznawiania odtwarzania wystarcza wykorzystanie `audio_pipeline_resume`. Główną różnicą pomiędzy tymi funkcjami jest tworzenie nowych zadań przez `audio_pipeline_run`, w przypadku wznawiania już zakładamy, że zostały one wcześniej utworzone.
+  - Zatrzymywanie wymaga zatrzymania całego `audio_pipeline`, wyczyszczenie `ring_buffer` oraz zresetowanie stanu wszystkich elementów pipeline'u.
+- `set` (przycisk dotykowy)  
+  ```c
     } else if ((int) msg.data == get_input_set_id()) {
         ESP_LOGI(TAG, "[ * ] [Set] touch tap event");
         current_ix = (current_ix+1) % RADIOS_NUMBER;
@@ -392,6 +408,18 @@ if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
             audio_pipeline_set_listener(pipeline, evt);
         }
         audio_pipeline_run(pipeline);
+  ```
+
+  Zmienia stację na kolejną w liście stacji (punkt 4.1), a w przypadku dojścia do końca listy wraca do pierwszej stacji. Aby to osiągnąć wykonywane są następujące kroki:
+  - zatrzymujemy odtwarzanie (analogicznie do zatrzymywania przyciskiem `play`)
+  - zmieniamy adres URI w elemencie `http_stream`
+  - w przypadku gdy aktualna i następna stacja wymagają innego dekodera:
+    - rozłączamy aktualne elementy pipeline'u
+    - łączymy je ponownie z podmienionym dekoderem
+    - ponownie ustawiamy listenera, ponieważ zmieniliśmy skład połączonych audio_elementów
+
+- `volup` (przycisk dotykowy)  
+  ```c
     } else if ((int) msg.data == get_input_volup_id()) {
         ESP_LOGI(TAG, "[ * ] [Vol+] touch tap event");
         player_volume += 10;
@@ -400,6 +428,10 @@ if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
         }
         audio_hal_set_volume(board_handle->audio_hal, player_volume);
         ESP_LOGI(TAG, "[ * ] Volume set to %d %%", player_volume);
+  ```
+  Zwiększa głośność wykorzystując interfejs HAL (punkt 4.2) równocześnie pilnując aby nie przekroczyć maksymalnej głośności.
+- `voldown` (przycisk dotykowy)
+  ```c
     } else if ((int) msg.data == get_input_voldown_id()) {
         ESP_LOGI(TAG, "[ * ] [Vol-] touch tap event");
         player_volume -= 10;
@@ -408,48 +440,18 @@ if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON)
         }
         audio_hal_set_volume(board_handle->audio_hal, player_volume);
         ESP_LOGI(TAG, "[ * ] Volume set to %d %%", player_volume);
+  ```
+  Zmniejsza głośność analogicznie jak w przypadku zwiększania.
+- `mode` (przycisk fizyczny)
+  ```c
     } else if ((int) msg.data == get_input_mode_id()) {
         ESP_LOGI(TAG, "[ * ] [Mode] button pressed");
         break;
     }
-}
-```
-Aby zakwalifikować wydarzenie jako przycisk i abyśmy go zaczęli przetwarzać muszą być spełnione następujące oba warunki:
-- Źródłem wiadomości musi być jedno z:
-  - przyciski dotykowe
-  - zwykły przycisk fizyczne
-- Komenda, czyli typ akcji jedna z:
-  - dotknięcie dotykowego przycisku
-  - wciśnięcie zwykłego przycisku
+  ```
+  Wychodzi z nieskończonej pętli w celu zakończenia pracy radia.
 
-Następnie gdy mamy pewność, że przycisk został wciśnięty, należy go zidentyfikować i wykonać przypisane mu zadanie.
-Przy pomocy pola dane sprawdzamy, który przycisk był wciśnięty - obsługujemy przyciski:
-- Play
-- Set
-- Vol-
-- Vol+
-- Mode (pozostałe są dotykowe, ten jest "normalny")
-
-W zależności od wciśniętego przycisku wykonujemy następującą akcję(od najprostszych):
-- Wyjście z nieskończonego while'a, by zakończyć program i wyłączyć radio,
-- Zmienienie głośności radia,
-- Pausowanie i startowanie/odpauzowywanie radia,
-  - W zależności od obecnego stanu, przechodzimy w następny,
-  - Pierwsze wystartowanie audio pipeline'a robimy run'em, natomiast aby później odpauzować wykorzystujemy tylko resume - główną różnicą jest to, że run dodatkowo tworzy taski dla wszystkich elementów pipeline'a.
-  - Aby zapauzować radio najpierw zatrzymujemy pipeline (i czekamy aż się zatrzyma), ze względu na to, że działamy na streamach, musimy również wyczyścić ringbuffer i zmienić stan itemów, aby później mogły być na nowo ustawione.
-- Zmiana stacji.
-  - Zasadniczo restartujemy stream, odpalając go na nowej stacji - stopujemy pipeline, czyścimy ringbuffer i items state, ustawiamy URI nowej stacji i uruchamiamy stream na nowej stacji.
-  - Dodatkowo sprawdzamy, czy obecny dekoder jest tym samym, na którym będziemy odbierać nową stację - gdy tak nie jest, musimy go zmienić.
-    - Aby zmienić dekoder najpierw zrywamy z pipieline'a obecny dekoder, a następnie linkujemy w pipeline'ie http, obecny dekoder oraz i2s (wszystkie 3 są audio element handlami, a odwołujemy się do nich za pomocą nadanych im nazw podczas rejestracji), na końcu dodajemy event listnera do pipeline'u.
-
-Dodawanie obsługi przycisków jest bardzo proste, natomiast mieliśmy bardzo dużo problemów, z dekoderami które niestety miały swoje problemy oraz zatrzymywaniem i wznawianiem strumienia, w różnych wariantach, a więc i również zmiana stacji. Dlatego też, szczególnie w tych miejscach, możemy mieć nie najbardziej optymalne/poprawne rozwiązanie - za to na pewno jest działające.
-
-Największe problemy z jakimi się tu zetknęliśmy:
-- Nie działa dekoder OGG, pod względem wznawiania jego działania.
-- Dekoder auto, nie radzi sobie z plikami mp4a, mimo że spokojnie powinien - działa chociażby dekoder acc.
-- Musimy traktować każdą pauzę i wznowienie, jako koniec i początek nadawania oraz resetować ringbuffer i stan elementów, ponieważ nie ma sensu pamiętania wszystkich tych rzeczy w przypadku streamu audio - dodatkowo jest kilka dosyć podobnych i zarazem umiarkowanie dobrze opisanych funkcji.
-
-### 4.7 Zatrzymanie wszystkiego i deinicjalizacja 
+### 4.7 Kończenie pracy radia i deinicjalizacja struktur
 ```c
 ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline");
 audio_pipeline_stop(pipeline);
@@ -479,20 +481,49 @@ audio_element_deinit(auto_decoder);
 audio_element_deinit(aac_decoder);
 esp_periph_set_destroy(set);
 ```
-Na sam koniec pozostało nam poodpinanie odpowiednich elementów i deinicjalizację wszystkich wykorzystanych wcześniej komponentów.
+Aby poprawnie zakończyć działanie aplikacji należy poodpinać odpowiednie elementy i zdeinicjalizować wszystkie wykorzystywane wcześniej komponenty.
 
-Zatrzymujemy zatem cały pipeline i odpinamy od niego wszystkie elementy.
-Zaczynamy od wyrejestrowania http_stream_reader'a, i2s_stream_reader'a oraz obu dekoderów - auto i acc.
-Następnie odpinamy słuchaczy pipeline'a.
-Pozostało już tylko pousuwanie zasobów, ale żeby to zrobić musimy najpierw zatrzymać wszystkie peryferia - domyślne dla ESP oraz ze względu na nasz projekt, moduł wi-fi oraz przyciski.
-Odpinamy słuchaczy peryferiów i dopiero wtedy możemy zniszczyć interface wydarzeń.
-Następnym krokiem jest już uwolnienie wszystkich zasobów, a więc deinicjuejmy oraz niszczymy:
+- zatrzymujemy cały pipeline
+- wyrejestrowujemy z pipeline'u `http_stream_reader`'a, `i2s_stream_reader`'a oraz oba dekodery - `auto` i `acc`.
+- odpinamy słuchaczy pipeline'u.
+- zatrzymujemy wszystkie peryferia
+  - domyślne dla ESP
+  - moduł wi-fi 
+  - przyciski
+- odpinamy słuchaczy peryferiów
+
+W celu zwolnienia zasobów należy usunąć:
+- interface wydarzeń
 - piepline
-- http_stream_reader
-- i2s_stream_writer
+- `http_stream_reader`
+- `i2s_stream_writer`
 - oba dekodery
-  - auto dekoder
-  - aac dekoder
+  - `auto` dekoder
+  - `aac` dekoder
 - zbiór peryferiów
 
-W tym momencie kończy się cała zaimplementowana aplikacja i aby ją uruchomić ponownie, musimy zresetować płytkę, przy pomocy przycisku RST (reset).
+W tym momencie kończy działanie aplikacja i aby ją uruchomić ponownie, musimy zresetować płytkę, przy pomocy przycisku RST (reset).
+
+## 5 Kluczowe części projektu wykonane samodzielnie
+Szkieletem, na którym opierał się ten projekt jest przykładowa aplikacja zamieszczona w oficjalnym repozytorium biblioteki `esp-adf`. Link: https://github.com/espressif/esp-adf/tree/master/examples/player/pipeline_living_stream/  
+Szkielet obejmował odtwarzanie audio z jednego konkretnego źródła przez Wi-Fi za pomocą dekodera `aac`.
+
+Szkielet został rozszerzony o następujące funkcjonalności:
+- obsługa wielu źródeł (stacji radiowych)
+- obsługa różnych formatów audio za pomocą różnych dekoderów, w tym:
+  - automatyczne rozpoznawanie i dekodowanie formatów mp3 i aac za pomocą specjalnego dekodera `auto`
+  - dekodowanie formatu mp4a za pomocą zwykłego dekodera `aac`
+- obsługa przycisków w celu:
+  - zmiany głośności
+  - zmiany stacji
+  - zatrzymywania i wznawiania odtwarzania
+  - kończenia działania aplikacji
+
+## 6 Napotkane trudności i opinie
+
+Największe problemy z jakimi się zetknęliśmy:
+- dekoder `ogg` nie działa po zatrzymaniu i ponownym wznowieniu odtwarzania. Brak dostępu do kodu źródłowego dekodera uniemożliwił identyfikację problemu. Znaleźliśmy wątek, w którym jest opisany ten sam problem ale nie posiada rozwiązania: https://esp32.com/viewtopic.php?t=16693
+- dekoder `auto`, który obsługuje format aac nie potrafi odpowiednio zidentyfikować formatu mp4a. Zarówno format aac jak i format mp4a dają się dekodować za pomocą zwykłego dekodera `aac`.
+- ze względu na naturę radia nie jest możliwe pauzowanie i wznawianie odtwarzania audio tak jak ma to miejsce w przypadku odtwarzania muzyki z pliku. Przez to konieczne było kompletne zatrzymywanie i restartowanie całego `audio_pipeline`
+
+Pomimo napotkanych problemów korzystanie z płytki ESP32-LyraT V4.3 w połączeniu z biblioteką `esp-adf` było wygodne z perspektywy tworzenia aplikacji. Biblioteka pomimo dostępu do bardzo niskopoziomowych funkcji udostępnia też wysokopoziomowe API, z którego pomocą można w niewielkiej ilości kodu zaimplementować kompletną aplikację. Dokumentacja biblioteki dobrze wprowadza użytkownika w ogólny zarys i podaje przykłady zastosowania, jednak poszczególne funkcje nie są dokładnie opisane. Jest wiele podobnych funkcji, między którymi ciężko zrozumieć różnice ze względu na brak dokładnego opisu. Przykładem może być `audio_pipeline_start` i `audio_pipeline_run`.
