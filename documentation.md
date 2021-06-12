@@ -44,7 +44,7 @@ Możliwości oficjalnej wtyczki ESP-IDF do Visual Studio Code:
 - Analiza rozmiaru plików binarnych pod względem wykorzystania ramu.
 - Włączenie GUI w którym można zmieniać ustawienia projektu (dane Wi-Fi, rodzaj płytki itp.).
 - Tworzenie nowego projektu, czy to z gotowego przykładu, który chcemy rozbudować, czy po prostu czystego projektu.
-- Mamy możliwość przeprowadzenia debugowania, jednak ta opcja nie była wykorzystywana przy realizacji projektu https://github.com/espressif/vscode-esp-idf-extension/blob/master/docs/tutorial/debugging.md.
+- Istnieje możliwość przeprowadzenia debugowania przez JTAG oraz wygenerowania core-dump, jednak ta opcja nie była wykorzystywana przy realizacji projektu https://github.com/espressif/vscode-esp-idf-extension/blob/master/docs/tutorial/debugging.md. 
 - Kilka innych funkcji, które są opisane w oficjalnej dokumentacji https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/vscode-setup.html.
 
 Oto naszym zdaniem dwa najciekawsze przykłady, wykorzystania GUI z plugina (mimo, że najczęściej używaliśmy build, flash i monitor).
@@ -143,6 +143,16 @@ radio_station_t stations[] = {
         .name = "station6",
         .decoder_name = "aac", // mp4a
         .uri = "http://sk.cri.cn/hyhq.m3u8"
+    },
+    {
+        .name = "station7",
+        .decoder_name = "auto", // mp3
+        .uri = "http://musicbird.leanstream.co/JCB075-MP3"
+    },
+    {
+        .name = "station8",
+        .decoder_name = "auto", // mp3
+        .uri = "https://musicbird.leanstream.co/JCB064-MP3"
     }
 };
 
