@@ -492,16 +492,16 @@ audio_element_deinit(auto_decoder);
 audio_element_deinit(aac_decoder);
 esp_periph_set_destroy(set);
 ```
-Aby poprawnie zakończyć działanie aplikacji należy poodpinać odpowiednie elementy i zdeinicjalizować wszystkie wykorzystywane wcześniej komponenty.
+Aby poprawnie zakończyć działanie aplikacji należy poodłączać odpowiednie elementy i zdeinicjalizować wszystkie wykorzystywane wcześniej komponenty.
 
 - zatrzymujemy cały pipeline
 - wyrejestrowujemy z pipeline'u `http_stream_reader`'a, `i2s_stream_reader`'a oraz oba dekodery - `auto` i `acc`.
-- odpinamy słuchaczy pipeline'u.
+- odłączamy słuchaczy pipeline'u.
 - zatrzymujemy wszystkie peryferia
   - domyślne dla ESP
   - moduł wi-fi 
   - przyciski
-- odpinamy słuchaczy peryferiów
+- odłączamy słuchaczy peryferiów
 
 W celu zwolnienia zasobów należy usunąć:
 - interface wydarzeń
